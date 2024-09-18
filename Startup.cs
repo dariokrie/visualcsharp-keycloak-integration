@@ -1,6 +1,4 @@
-﻿using Microsoft.AspNetCore.Authentication.Cookies;
-using Microsoft.AspNetCore.Authentication.OpenIdConnect;
-using Microsoft.IdentityModel.Tokens;
+﻿using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.OpenApi.Models;
 using Showcasing.Keycloak.Configuration;
 
@@ -22,35 +20,14 @@ public class Startup
         KeycloakSettings = keyCloakSettings;
         Configuration.GetSection("Keycloak").Bind(keyCloakSettings);
 
-        services.AddAuthentication(options => {
-            options.DefaultScheme = CookieAuthenticationDefaults.AuthenticationScheme;
-            options.DefaultSignInScheme = CookieAuthenticationDefaults.AuthenticationScheme;
-            options.DefaultChallengeScheme = OpenIdConnectDefaults.AuthenticationScheme;
-        })
-        .AddCookie(CookieAuthenticationDefaults.AuthenticationScheme)
-        .AddOpenIdConnect(options =>
-        {
-            options.Authority = KeycloakSettings.Authority;
-            options.ClientId = KeycloakSettings.ClientId;
-            options.ClientSecret = KeycloakSettings.ClientSecret;
-            options.ResponseType = "code";
-            options.SaveTokens = true;
-            options.RequireHttpsMetadata = false;
-            options.GetClaimsFromUserInfoEndpoint = true;
-            options.Scope.Add(KeycloakSettings.Scope);
-            options.NonceCookie.SameSite = SameSiteMode.None;
-            options.NonceCookie.SecurePolicy = CookieSecurePolicy.Always;
-            options.CorrelationCookie.SameSite = SameSiteMode.None;
-            options.CorrelationCookie.SecurePolicy = CookieSecurePolicy.Always;
-            options.TokenValidationParameters = new TokenValidationParameters
-            {
-                ValidateIssuer = true,
-                ValidIssuer = KeycloakSettings.Authority
-            };
-            options.Scope.Add("openid");
-            options.Scope.Add("profile");
-            options.Scope.Add("email");
-        });
+        services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
+            .AddJwtBearer(JwtBearerDefaults.AuthenticationScheme,
+                 options =>
+                 {
+                     options.Authority = KeycloakSettings.Authority;
+                     options.Audience = "account";
+                     options.RequireHttpsMetadata = false;
+                 });
 
         services.AddControllers();
         services.AddEndpointsApiExplorer();
@@ -66,30 +43,24 @@ public class Startup
                     {
                         AuthorizationUrl = new Uri($"{KeycloakSettings.Authority}/protocol/openid-connect/auth"),
                         TokenUrl = new Uri($"{KeycloakSettings.Authority}/protocol/openid-connect/token"),
-                        Scopes = new Dictionary<string, string>
-                            {
-                                { "openid", "OpenID Connect scope" },
-                                { "profile", "Profile scope" },
-                                { "email", "Email scope" }
-                            }
                     }
                 }
             });
 
             c.AddSecurityRequirement(new OpenApiSecurityRequirement
+            {
                 {
+                    new OpenApiSecurityScheme
                     {
-                        new OpenApiSecurityScheme
+                        Reference = new OpenApiReference
                         {
-                            Reference = new OpenApiReference
-                            {
-                                Type = ReferenceType.SecurityScheme,
-                                Id = "oauth2"
-                            }
-                        },
-                        new[] { "openid", "profile", "email" }
-                    }
-                });
+                            Type = ReferenceType.SecurityScheme,
+                            Id = "oauth2"
+                        }
+                    },
+                    new[] { "openid", "profile", "email" }
+                }
+            });
         });
 
         services.AddCors(corsOptions => corsOptions.AddPolicy("AllowAllPolicy", policyBuilder =>

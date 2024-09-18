@@ -71,4 +71,4 @@ As a user in the Account Console, you can manage your account including modifyin
 
 # Integrate Keycloak into ASP.NET Project
 
-1. Open `appsettings.Development.json` and paste your client secret into the corresponding field.
+1. Open `appsettings.Development.json` and paste your client secret into the corresponding field. (myrealm -> Clients -> myrealmclient -> Credentials)
